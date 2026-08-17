@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YARA LAMIS — Rider Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#697386;--accent:#f5c400;--line:#e7eaf0;--danger:#d92d20;--ok:#16803c}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#111827;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+.brand{font-weight:800;font-size:19px}.brand span{color:var(--accent)}button,.btn{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:700}.primary{background:var(--accent);color:#111}.dark{background:#273142;color:#fff}.danger{background:#fee4e2;color:var(--danger)}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;background:#fff;border-bottom:1px solid var(--line)}
+nav button{background:#f1f3f7;color:#344054;white-space:nowrap}.active{background:#111827!important;color:#fff!important}
+main{max-width:1250px;margin:auto;padding:20px}.page{display:none}.page.show{display:block}
+h1{margin:0 0 5px;font-size:25px}.sub{color:var(--muted);margin-bottom:20px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 2px 8px #00000008}.metric{font-size:28px;font-weight:800;margin-top:7px}.muted{color:var(--muted);font-size:13px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}.toolbar input,.toolbar select,.form input,.form select,.form textarea{padding:11px;border:1px solid #d8dde6;border-radius:9px;background:#fff;min-width:150px}.toolbar input{flex:1}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}th,td{text-align:left;padding:11px;border-bottom:1px solid var(--line);font-size:13px}th{background:#f8fafc}.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800}.good{background:#dcfce7;color:var(--ok)}.bad{background:#fee4e2;color:var(--danger)}.warn{background:#fff3cd;color:#946200}
+.form{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.form textarea{min-height:90px}.full{grid-column:1/-1}
+.notice{padding:12px;border-radius:10px;background:#fff8d6;border:1px solid #f1df79;margin:12px 0}.empty{padding:30px;text-align:center;color:var(--muted)}
+.doc-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-top:15px}
+.doc-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px #00000008;display:flex;flex-direction:column}
+.doc-thumb{height:130px;background:#f1f3f7;display:flex;align-items:center;justify-content:center;font-size:42px;color:#9aa4b5;background-size:cover;background-position:center;cursor:pointer;position:relative}
+.doc-thumb .badge{position:absolute;top:8px;right:8px}
+.doc-card-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:4px}
+.doc-card-body b{font-size:13px;line-height:1.3}
+.doc-card-actions{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px}
+.doc-card-actions button{padding:6px 9px;font-size:11px;border-radius:7px}
+#docViewListBtn.viewactive,#docViewGalleryBtn.viewactive,#docViewFolderBtn.viewactive{background:#111827;color:#fff}
+.folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-top:15px}
+.folder-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer;box-shadow:0 2px 8px #00000008;transition:transform .1s}
+.folder-card:hover{transform:translateY(-2px)}
+.folder-icon{font-size:40px}
+.folder-name{font-weight:800;margin-top:8px;font-size:14px}
+.folder-meta{color:var(--muted);font-size:12px;margin-top:3px}
+.folder-badges{display:flex;gap:5px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.doc-detail-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 2px 8px #00000008}
+.doc-detail-thumb{width:90px;height:90px;flex:none;border-radius:10px;background:#f1f3f7;display:flex;align-items:center;justify-content:center;font-size:32px;color:#9aa4b5;background-size:cover;background-position:center;cursor:pointer}
+.doc-detail-body{flex:1;min-width:0}
+.doc-detail-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 14px;margin-top:6px;font-size:12.5px}
+.doc-detail-row span{color:var(--muted)}
+.doc-detail-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.doc-detail-actions button{padding:6px 10px;font-size:11.5px;border-radius:7px}
+.folder-back{margin-bottom:12px}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.form{grid-template-columns:1fr}main{padding:13px}th,td{white-space:nowrap}.tablewrap{overflow:auto}.metric{font-size:23px}}
+@media(max-width:450px){.grid{grid-template-columns:1fr 1fr}.brand{font-size:15px}}
+
+.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:50;padding:15px}.modal.show{display:flex}.modalbox{background:#fff;width:min(1000px,100%);height:min(90vh,800px);border-radius:15px;overflow:hidden;display:flex;flex-direction:column}.modalhead{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.modalbody{flex:1;overflow:auto;padding:10px;text-align:center}.modalbody img{max-width:100%;max-height:100%}.modalbody iframe{width:100%;height:100%;border:0}.modalbody pre{text-align:left;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header><div class="brand">YARA <span>LAMIS</span> — Rider Portal</div><div><button class="primary" onclick="exportJSON()">Backup</button></div></header>
+<nav id="nav"></nav>
+<main>
+<div class="card" style="margin-bottom:15px"><div class="toolbar" style="margin:0"><input id="globalSearch" placeholder="🔎 Search Rider ID / Name / Mobile / Vehicle Number..." oninput="globalSearch()"><button class="primary" onclick="globalSearch()">Search</button></div><div id="globalResults"></div></div>
+<section id="dashboard" class="page show">
+<h1>Dashboard</h1><div class="sub">Fleet overview & daily control</div>
+<div class="grid" id="metrics"></div>
+<div class="grid" id="docAlerts" style="margin-top:15px"></div>
+<div class="card" style="margin-top:15px"><h3>⚠️ Smart Action Center</h3><div id="smartAlerts"></div></div>
+<div class="card" style="margin-top:15px"><h3>Rider & Document Control Center</h3><div id="dashboardRiderSummary"></div></div>
+<div class="card" style="margin-top:15px"><h3>Quick Actions</h3><div class="toolbar">
+<button class="primary" onclick="showPage('riders')">Add Rider</button><button class="dark" onclick="showPage('dailyentry')">Daily Entry</button><button class="dark" onclick="showPage('performance')">Performance</button><button class="dark" onclick="showPage('penalties')">Penalty</button><button class="dark" onclick="showPage('documents')">Documents</button><button class="dark" onclick="showPage('vehicles')">Vehicles</button>
+</div></div>
+</section>
+
+<section id="riders" class="page"><h1>Rider Management</h1><div class="sub">Create, search and manage riders</div>
+<div class="card"><div class="toolbar"><input id="rSearch" placeholder="Search rider ID / name / mobile" oninput="renderRiders()"><button class="primary" onclick="riderForm()">+ Add Rider</button><button onclick="importJSON()">Import Backup</button><input id="fileImport" type="file" accept=".json" hidden onchange="readJSON(event)"></div><div id="riderFormBox"></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Name</th><th>Mobile</th><th>Status</th><th>Actions</th></tr></thead><tbody id="ridersBody"></tbody></table></div></div></section>
+
+<section id="dailyentry" class="page"><h1>Daily Rider Entry & Ledger</h1><div class="sub">Search by Rider ID or Mobile Number — orders, cancel and penalty all link automatically to that rider's record and totals update instantly</div>
+<div class="card">
+<div class="form"><input id="deSearch" class="full" placeholder="Enter Rider ID or Mobile Number" oninput="deLookupRider()"></div>
+<div id="deRiderInfo" style="margin-top:10px"></div>
+</div>
+<div class="card" id="deFormCard" style="display:none;margin-top:15px"></div>
+<div class="card" style="margin-top:15px"><h3>📅 Daily Ledger — All Riders</h3>
+<div class="toolbar"><input id="dlDate" type="date" onchange="renderDailyLedger()"><input id="dlSearch" placeholder="Search rider" oninput="renderDailyLedger()"><button class="dark" onclick="document.getElementById('dlDate').value='';document.getElementById('dlSearch').value='';renderDailyLedger()">Clear Filters</button></div>
+<div class="tablewrap"><table><thead><tr><th>Date</th><th>Rider</th><th>Orders</th><th>Completed</th><th>Cancel</th><th>Reject</th><th>Penalty (that day)</th></tr></thead><tbody id="dlBody"></tbody></table></div>
+</div></section>
+
+<section id="performance" class="page"><h1>Performance</h1><div class="sub">Daily rider performance tracking</div>
+<div class="card"><div class="toolbar"><input id="pSearch" placeholder="Search rider" oninput="renderPerformance()"><button class="primary" onclick="performanceForm()">+ Add Record</button></div><div id="performanceFormBox"></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Rider</th><th>Orders</th><th>Completed</th><th>Cancel</th><th>Reject</th><th>Online</th><th>Status</th></tr></thead><tbody id="perfBody"></tbody></table></div></div></section>
+
+<section id="penalties" class="page"><h1>Penalty Management</h1><div class="sub">Rider-wise penalty, evidence and date control</div>
+<div class="grid" id="penMetrics"></div>
+<div class="card"><div class="toolbar"><input id="penSearch" placeholder="Search Rider ID / name / reason / date" oninput="renderPenalties()"><button class="primary" onclick="penaltyForm()">+ Add Penalty</button></div><div id="penaltyFormBox"></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Rider</th><th>Reason</th><th>Amount</th><th>Evidence</th><th>Status</th><th>Action</th></tr></thead><tbody id="penBody"></tbody></table></div></div></section>
+
+<section id="documents" class="page"><h1>Document Vault</h1><div class="sub">Store document metadata locally in this browser</div>
+<div class="notice">For privacy, this offline version stores file metadata and browser-selected files only while the page is open. Use Backup regularly.</div>
+<div class="card">
+<div class="toolbar"><input id="dSearch" placeholder="Search rider / document / expiry" oninput="renderDocs()"><button class="primary" onclick="addDocForm()">+ Add / Update Document</button><button id="docViewListBtn" class="dark" onclick="setDocView('list')">📋 List</button><button id="docViewGalleryBtn" onclick="setDocView('gallery')">🖼️ Gallery</button><button id="docViewFolderBtn" onclick="setDocView('folder')">📁 By Rider</button></div>
+<div id="docFormBox"></div>
+<div class="tablewrap" id="docListWrap"><table><thead><tr><th>Rider</th><th>Document</th><th>File</th><th>Issue Date</th><th>Expiry</th><th>Status</th><th>Action</th></tr></thead><tbody id="docBody"></tbody></table></div>
+<div id="docGallery" class="doc-gallery" style="display:none"></div>
+<div id="docFolders" style="display:none"></div>
+</div></section>
+
+<section id="vehicles" class="page"><h1>Vehicle Management</h1><div class="sub">Plate, assignment and expiry control</div>
+<div class="card"><div class="toolbar"><input id="vSearch" placeholder="Search plate / rider" oninput="renderVehicles()"><button class="primary" onclick="vehicleForm()">+ Add Vehicle</button></div><div id="vehicleFormBox"></div><div class="tablewrap"><table><thead><tr><th>Plate</th><th>Model</th><th>Rider</th><th>Registration</th><th>Insurance</th><th>Status</th><th>Action</th></tr></thead><tbody id="vehicleBody"></tbody></table></div></div></section>
+
+<section id="rider360" class="page"><h1>Rider 360° Profile</h1><div class="sub">Complete rider, vehicle, document and penalty view</div><div id="rider360Body"></div></section>
+
+<section id="reports" class="page"><h1>Reports & Backup</h1><div class="sub">Export your local operational data</div>
+<div class="card"><h3>📊 Excel Reports & Bulk Update</h3><div class="sub" style="margin-bottom:10px">Download a daily rider report, or download an editable template, edit it in Excel, and re-upload to auto-update Riders, Performance and Penalties — the dashboard will recalculate automatically.</div>
+<div class="toolbar">
+<button class="primary" onclick="exportDailyReportExcel()">📥 Download Daily Rider Report (Excel)</button>
+<button class="dark" onclick="exportEditableTemplate()">📝 Download Editable Excel Template</button>
+<button class="dark" onclick="document.getElementById('excelImportInput').click()">⬆️ Import Excel to Update Data</button>
+<input id="excelImportInput" type="file" accept=".xlsx,.xls" hidden onchange="handleExcelImport(event)">
+</div>
+<div id="excelImportStatus"></div>
+</div>
+<div class="card" style="margin-top:15px"><h3>📂 Import ANY Excel File (Preview + Column Mapping)</h3>
+<div class="sub" style="margin-bottom:10px">Upload any Excel file, no matter its column names. Preview the data, choose which sheet and which data type to update (Riders / Performance / Penalties), match each system field to your column, then import.</div>
+<div class="toolbar"><button class="dark" onclick="document.getElementById('anyExcelInput').click()">📂 Choose Excel File</button><input id="anyExcelInput" type="file" accept=".xlsx,.xls" hidden onchange="handleAnyExcelUpload(event)"></div>
+<div id="anySheetPickBox" style="display:none;margin-top:10px"><label>Sheet: <select id="anySheetSelect" onchange="loadImportSheet(this.value)"></select></label></div>
+<div id="anyPreviewBox"></div>
+<div id="anyTargetBox" style="display:none;margin-top:10px"><label>Update which data: <select id="anyTargetSelect" onchange="renderFieldMapping(this.value)"><option value="riders">Riders</option><option value="performance">Performance</option><option value="penalties">Penalties</option></select></label></div>
+<div id="anyMappingBox"></div>
+<div id="anyImportStatus"></div>
+</div>
+<div class="card" style="margin-top:15px"><div class="toolbar"><button class="primary" onclick="exportJSON()">Download JSON Backup</button><button class="dark" onclick="exportCSV('riders')">Riders CSV</button><button class="dark" onclick="exportCSV('performance')">Performance CSV</button><button class="dark" onclick="exportCSV('penalties')">Penalties CSV</button><button class="danger" onclick="resetData()">Reset All Data</button></div></div></section>
+
+<section id="settings" class="page"><h1>Settings</h1><div class="sub">Portal configuration</div><div class="card form"><label>Company Name<input id="company" value="YARA LAMIS Logistics Services"></label><label>Language<select><option>English</option><option>العربية</option><option>বাংলা</option></select></label><label class="full">System note<textarea>Offline-first rider management portal.</textarea></label><button class="primary" onclick="saveSettings()">Save Settings</button></div></section>
+</main>
+
+<div id="viewer" class="modal" onclick="if(event.target===this)closeViewer()">
+ <div class="modalbox">
+  <div class="modalhead"><strong id="viewerTitle">Document Viewer</strong><button onclick="closeViewer()">Close</button></div>
+  <div id="viewerBody" class="modalbody"></div>
+ </div>
+</div>
+<script>
+
+const KEY='yara_lamis_portal_v1';
+let docViewMode='list';
+let docOpenFolderRider=null;
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{riders:[],performance:[],penalties:[],documents:[],vehicles:[],settings:{company:'YARA LAMIS Logistics Services'}};
+db.vehicles=db.vehicles||[];
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function init(){document.getElementById('nav').innerHTML=[['dashboard','Dashboard'],['riders','Riders'],['dailyentry','Daily Entry'],['performance','Performance'],['penalties','Penalties'],['documents','Documents'],['vehicles','Vehicles'],['reports','Reports'],['settings','Settings']].map((x,i)=>`<button class="${i?'':'active'}" onclick="showPage('${x[0]}',this)">${x[1]}</button>`).join('');document.getElementById('docViewListBtn').classList.add('viewactive');renderAll()}
+function showPage(id,btn){document.querySelectorAll('.page').forEach(x=>x.classList.remove('show'));document.getElementById(id).classList.add('show');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');else [...document.querySelectorAll('nav button')].find(x=>x.textContent.toLowerCase()==id)?.classList.add('active');renderAll()}
+function renderAll(){renderMetrics();renderRiders();renderPerformance();renderPenalties();renderDocs();renderVehicles();renderSmartAlerts();renderDailyLedger()}
+function renderMetrics(){let total=db.riders.length, orders=db.performance.reduce((a,x)=>a+Number(x.orders||0),0), completed=db.performance.reduce((a,x)=>a+Number(x.completed||0),0), pen=db.penalties.reduce((a,x)=>a+Number(x.amount||0),0);document.getElementById('metrics').innerHTML=[['Total Riders',total],['Total Orders',orders],['Completed',completed],['Penalty SAR',pen.toFixed(0)],['Vehicles',db.vehicles.length]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="metric">${x[1]}</div></div>`).join('')}
+function riderForm(r={}){document.getElementById('riderFormBox').innerHTML=`<div class="card form"><input id="rid" placeholder="Rider ID" value="${esc(r.id)}"><input id="rn" placeholder="Rider Name" value="${esc(r.name)}"><input id="rm" placeholder="Mobile" value="${esc(r.mobile)}"><select id="rs"><option ${r.status!='Inactive'?'selected':''}>Active</option><option ${r.status=='Inactive'?'selected':''}>Inactive</option></select><button class="primary" onclick="saveRider('${esc(r.id||'')}')">Save Rider</button><button onclick="document.getElementById('riderFormBox').innerHTML=''">Close</button></div>`}
+function saveRider(old){let r={id:document.getElementById('rid').value.trim(),name:document.getElementById('rn').value.trim(),mobile:document.getElementById('rm').value.trim(),status:document.getElementById('rs').value};if(!r.id||!r.name)return alert('Rider ID and Name are required');if(old){let i=db.riders.findIndex(x=>x.id==old);if(i>=0)db.riders[i]=r}else db.riders.push(r);save();document.getElementById('riderFormBox').innerHTML='';renderAll()}
+function renderRiders(){let q=(document.getElementById('rSearch')?.value||'').toLowerCase();document.getElementById('ridersBody').innerHTML=db.riders.filter(r=>(r.id+' '+r.name+' '+r.mobile).toLowerCase().includes(q)).map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.mobile)}</td><td><span class="badge ${r.status=='Active'?'good':'bad'}">${r.status}</span></td><td><button class="primary" onclick="openRider360('${esc(r.id)}')">360°</button> <button onclick='riderForm(${JSON.stringify(r)})'>Edit</button> <button class="danger" onclick="deleteRider('${esc(r.id)}')">Delete</button></td></tr>`).join('')||`<tr><td colspan="5" class="empty">No riders yet.</td></tr>`}
+function deleteRider(id){if(confirm('Delete this rider?')){db.riders=db.riders.filter(x=>x.id!=id);save();renderAll()}}
+function performanceForm(){let opts=db.riders.map(r=>`<option value="${esc(r.id)}">${esc(r.name)} (${esc(r.id)})</option>`).join('');document.getElementById('performanceFormBox').innerHTML=`<div class="card form"><input id="pd" type="date" value="${new Date().toISOString().slice(0,10)}"><select id="pr">${opts}</select><input id="po" type="number" placeholder="Orders"><input id="pc" type="number" placeholder="Completed"><input id="px" type="number" placeholder="Cancel" value="0"><input id="pj" type="number" placeholder="Reject" value="0"><input id="ph" type="number" step=".1" placeholder="Online hours"><button class="primary" onclick="savePerf()">Save Record</button><button onclick="document.getElementById('performanceFormBox').innerHTML=''">Close</button></div>`}
+function savePerf(){let x={date:pd.value,rider:pr.value,orders:+po.value||0,completed:+pc.value||0,cancel:+px.value||0,reject:+pj.value||0,online:+ph.value||0};db.performance.push(x);save();document.getElementById('performanceFormBox').innerHTML='';renderAll()}
+function renderPerformance(){let q=(document.getElementById('pSearch')?.value||'').toLowerCase();document.getElementById('perfBody').innerHTML=db.performance.filter(x=>(x.rider+' '+(db.riders.find(r=>r.id==x.rider)?.name||'')).toLowerCase().includes(q)).slice().reverse().map(x=>{let rate=x.orders?x.completed/x.orders*100:0;return `<tr><td>${x.date}</td><td>${esc(db.riders.find(r=>r.id==x.rider)?.name||x.rider)}</td><td>${x.orders}</td><td>${x.completed}</td><td>${x.cancel}</td><td>${x.reject}</td><td>${x.online}h</td><td><span class="badge ${rate>=90?'good':rate>=70?'warn':'bad'}">${rate.toFixed(0)}%</span></td></tr>`}).join('')||`<tr><td colspan="8" class="empty">No performance records.</td></tr>`}
+function penaltyForm(existing){
+let r=existing||{}, opts=db.riders.map(x=>`<option value="${esc(x.id)}" ${x.id==r.rider?'selected':''}>${esc(x.name)} (${esc(x.id)})</option>`).join('');
+document.getElementById('penaltyFormBox').innerHTML=`<div class="card form">
+<input id="nd" type="date" value="${esc(r.date||new Date().toISOString().slice(0,10))}">
+<select id="nr"><option value="">Select Rider</option>${opts}</select>
+<input id="na" type="number" placeholder="Penalty Amount SAR" value="${esc(r.amount||'')}">
+<input id="ns" placeholder="Penalty Reason" value="${esc(r.reason||'')}">
+<select id="nt"><option ${r.status=='Pending'?'selected':''}>Pending</option><option ${r.status=='Applied'?'selected':''}>Applied</option><option ${r.status=='Waived'?'selected':''}>Waived</option></select>
+<input id="nreview" type="date" value="${esc(r.reviewDate||'')}">
+<input id="nf" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+<input id="nref" placeholder="Reference / Notice No." value="${esc(r.reference||'')}">
+<button class="primary" onclick="savePenalty('${esc(r.id||'')}')">${r.id?'Update Penalty':'Save Penalty'}</button>
+<button onclick="document.getElementById('penaltyFormBox').innerHTML=''">Close</button></div>`;
+}
+function savePenalty(oldId){
+let f=document.getElementById('nf').files[0], rider=nr.value;
+if(!rider||!ns.value)return alert('Rider and penalty reason are required');
+let ex=db.penalties.find(x=>x.id==oldId);
+let obj={id:oldId||('PEN-'+Date.now()),date:nd.value,rider,amount:+na.value||0,reason:ns.value,status:nt.value,reviewDate:nreview.value,reference:nref.value,file:f?f.name:(ex?.file||''),blobId:oldId||('PENBLOB-'+Date.now()),added:new Date().toLocaleString()};
+if(oldId){let i=db.penalties.findIndex(x=>x.id==oldId);if(i>=0)db.penalties[i]=obj}else db.penalties.push(obj);
+save();if(f)idbPut(obj.blobId,f);document.getElementById('penaltyFormBox').innerHTML='';renderAll();
+}
+function renderPenalties(){
+let q=(document.getElementById('penSearch')?.value||'').toLowerCase();
+let rows=db.penalties.filter(x=>(x.rider+' '+(db.riders.find(r=>r.id==x.rider)?.name||'')+' '+x.reason+' '+x.date).toLowerCase().includes(q)).slice().reverse();
+let total=rows.reduce((a,x)=>a+Number(x.amount||0),0), pending=rows.filter(x=>x.status=='Pending').length, evidence=rows.filter(x=>x.file).length, riders=new Set(rows.map(x=>x.rider)).size;
+document.getElementById('penMetrics').innerHTML=[['Penalized Riders',riders,'good'],['Penalty Total SAR',total,'warn'],['Pending Penalties',pending,'bad'],['Evidence Files',evidence,'good']].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="metric">${x[1]}</div></div>`).join('');
+document.getElementById('penBody').innerHTML=rows.map(x=>`<tr>
+<td>${esc(x.date)}<br><span class="muted">${esc(x.reviewDate?'Review: '+x.reviewDate:'')}</span></td>
+<td>${esc(db.riders.find(r=>r.id==x.rider)?.name||x.rider)}<br><span class="muted">${esc(x.rider)}</span></td>
+<td>${esc(x.reason)}<br><span class="muted">${esc(x.reference||'')}</span></td><td><b>${x.amount} SAR</b></td>
+<td>${x.file?`<button class="primary" onclick="viewPenalty('${esc(x.id)}')">View</button>`:'—'}</td>
+<td><span class="badge ${x.status=='Applied'?'bad':x.status=='Waived'?'good':'warn'}">${esc(x.status)}</span></td>
+<td><button onclick='penaltyForm(${JSON.stringify(x)})'>Update</button> <button onclick="downloadPenalty('${esc(x.id)}')">Download</button> <button class="danger" onclick="deletePenalty('${esc(x.id)}')">Delete</button></td>
+</tr>`).join('')||`<tr><td colspan="7" class="empty">No penalties found.</td></tr>`;
+}
+async function viewPenalty(id){
+let x=db.penalties.find(p=>p.id==id);if(!x)return;
+let f=x.file?await idbGet(x.blobId):null;
+document.getElementById('viewerTitle').textContent='Penalty Evidence — '+(x.file||'No file');
+let body=document.getElementById('viewerBody');
+if(!f)body.innerHTML='<div class="empty">No evidence file stored. Use Update and attach the document.</div>';
+else{let url=URL.createObjectURL(f);if(f.type.startsWith('image/'))body.innerHTML=`<img src="${url}" alt="Penalty evidence">`;else if(f.type==='application/pdf')body.innerHTML=`<iframe src="${url}"></iframe>`;else body.innerHTML=`<div class="empty"><p>Preview unavailable for this file type.</p><button class="primary" onclick="downloadPenalty('${id}')">Download</button></div>`}
+document.getElementById('viewer').classList.add('show');
+}
+async function downloadPenalty(id){
+let x=db.penalties.find(p=>p.id==id), f=x&&await idbGet(x.blobId);if(!f)return alert('Evidence file not found. Please update the penalty and attach it again.');
+let a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=x.file||'penalty-evidence';a.click();
+}
+async function deletePenalty(id){
+let x=db.penalties.find(p=>p.id==id);if(!x||!confirm('Delete this penalty record and evidence?'))return;
+db.penalties=db.penalties.filter(p=>p.id!=id);save();if(x.blobId)await idbDelete(x.blobId);renderAll();
+}
+function addDocForm(existing){
+let r=existing||{}, opts=db.riders.map(x=>`<option value="${esc(x.id)}" ${x.id==r.rider?'selected':''}>${esc(x.name)} (${esc(x.id)})</option>`).join('');
+document.getElementById('docFormBox').innerHTML=`<div class="card form">
+<select id="dfRider"><option value="">Select Rider</option>${opts}</select>
+<input id="dfName" placeholder="Document name (Iqama / License / Insurance / Passport)" value="${esc(r.name)}">
+<input id="dfIssue" type="date" value="${esc(r.issue||'')}">
+<input id="dfExpiry" type="date" value="${esc(r.expiry||'')}">
+<input id="dfFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+<input id="dfNote" placeholder="Note / document number" value="${esc(r.note||'')}">
+<button class="primary" onclick="saveDoc('${esc(r.id||'')}')">${r.id?'Update Document':'Save Document'}</button>
+<button onclick="document.getElementById('docFormBox').innerHTML=''">Close</button></div>`;
+}
+function saveDoc(oldId){
+let f=document.getElementById('dfFile').files[0], rider=dfRider.value, name=dfName.value.trim();
+if(!rider||!name)return alert('Rider and document name are required');
+let existing=db.documents.find(x=>x.id==oldId);
+let obj={id:oldId||('DOC-'+Date.now()),rider,name,issue:dfIssue.value,expiry:dfExpiry.value,note:dfNote.value,file:f?f.name:(existing?.file||'Not attached'),size:f?.size||existing?.size||0,added:new Date().toLocaleString(),blobId:oldId||('BLOB-'+Date.now())};
+if(oldId){let i=db.documents.findIndex(x=>x.id==oldId);if(i>=0)db.documents[i]=obj}else db.documents.push(obj);
+save();
+if(f) idbPut(obj.blobId,f);
+document.getElementById('docFormBox').innerHTML='';renderAll();
+}
+const DBNAME='YARA_LAMIS_DOCUMENTS_V1';
+function idbOpen(){return new Promise((resolve,reject)=>{let r=indexedDB.open(DBNAME,1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function idbPut(id,file){let dbx=await idbOpen();let tx=dbx.transaction('files','readwrite');tx.objectStore('files').put(file,id);tx.oncomplete=()=>dbx.close()}
+async function idbGet(id){let dbx=await idbOpen();return new Promise((resolve,reject)=>{let tx=dbx.transaction('files','readonly');let r=tx.objectStore('files').get(id);r.onsuccess=()=>{resolve(r.result);dbx.close()};r.onerror=()=>reject(r.error)})}
+async function idbDelete(id){let dbx=await idbOpen();let tx=dbx.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=()=>dbx.close()}
+async function viewDoc(id){
+let x=db.documents.find(d=>d.id==id);if(!x)return;
+let f=await idbGet(x.blobId);
+document.getElementById('viewerTitle').textContent=(x.name||'Document')+' — '+(x.file||'');
+let body=document.getElementById('viewerBody');
+if(!f){body.innerHTML='<div class="empty">The actual file is not stored in this browser. Please use Update and select the file again.</div>'}
+else{
+let url=URL.createObjectURL(f);
+if(f.type.startsWith('image/')) body.innerHTML=`<img src="${url}" alt="Document">`;
+else if(f.type==='application/pdf') body.innerHTML=`<iframe src="${url}"></iframe>`;
+else body.innerHTML=`<div class="empty"><p>This file type cannot be previewed here.</p><button class="primary" onclick="downloadDoc('${id}')">Download File</button></div>`;
+}
+document.getElementById('viewer').classList.add('show');
+}
+function closeViewer(){document.getElementById('viewer').classList.remove('show');document.getElementById('viewerBody').innerHTML=''}
+async function downloadDoc(id){
+let x=db.documents.find(d=>d.id==id), f=x&&await idbGet(x.blobId);if(!f)return alert('File not found. Please update the document and attach the file again.');
+let a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=x.file||x.name;a.click();
+}
+async function deleteDoc(id){
+let x=db.documents.find(d=>d.id==id);if(!x||!confirm('Delete this document?'))return;
+db.documents=db.documents.filter(d=>d.id!=id);save();if(x.blobId)await idbDelete(x.blobId);renderAll();
+}
+function docStatus(expiry){
+if(!expiry)return ['No Date','warn'];
+let d=new Date(expiry+'T23:59:59'), now=new Date(), days=Math.ceil((d-now)/86400000);
+if(days<0)return ['EXPIRED','bad'];
+if(days<=30)return [`EXPIRING ${days}D`,'bad'];
+if(days<=90)return [`${days}D LEFT`,'warn'];
+return ['VALID','good'];
+}
+function renderDocs(){
+let q=(document.getElementById('dSearch')?.value||'').toLowerCase();
+document.getElementById('docBody').innerHTML=db.documents.filter(x=>(x.rider+' '+x.name+' '+x.expiry+' '+x.note).toLowerCase().includes(q)).slice().sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999')).map(x=>{
+let st=docStatus(x.expiry);
+return `<tr><td>${esc(db.riders.find(r=>r.id==x.rider)?.name||x.rider)}<br><span class="muted">${esc(x.rider)}</span></td><td>${esc(x.name)}<br><span class="muted">${esc(x.note)}</span></td><td>${esc(x.file)}</td><td>${esc(x.issue||'-')}</td><td>${esc(x.expiry||'-')}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td><button class="primary" onclick="viewDoc('${esc(x.id)}')">View</button> <button onclick='addDocForm(${JSON.stringify(x)})'>Update</button> <button onclick="downloadDoc('${esc(x.id)}')">Download</button> <button class="danger" onclick="deleteDoc('${esc(x.id)}')">Delete</button></td></tr>`
+}).join('')||`<tr><td colspan="7" class="empty">No documents found.</td></tr>`;
+renderDocAlerts();
+renderDocGallery();
+renderDocFolders();
+}
+/* ===== V5.1: Document Gallery View ===== */
+function setDocView(mode){
+docViewMode=mode;
+document.getElementById('docListWrap').style.display=mode=='list'?'':'none';
+document.getElementById('docGallery').style.display=mode=='gallery'?'':'none';
+document.getElementById('docFolders').style.display=mode=='folder'?'':'none';
+document.getElementById('docViewListBtn').classList.toggle('viewactive',mode=='list');
+document.getElementById('docViewGalleryBtn').classList.toggle('viewactive',mode=='gallery');
+document.getElementById('docViewFolderBtn').classList.toggle('viewactive',mode=='folder');
+if(mode=='gallery')renderDocGallery();
+if(mode=='folder'){docOpenFolderRider=null;renderDocFolders()}
+}
+const docThumbCache={};
+function extIcon(name){
+let n=(name||'').toLowerCase();
+if(n.match(/\.(jpg|jpeg|png|gif|webp)$/))return '🖼️';
+if(n.match(/\.pdf$/))return '📕';
+if(n.match(/\.(doc|docx)$/))return '📝';
+return '📁';
+}
+async function renderDocGallery(){
+let box=document.getElementById('docGallery'); if(!box||box.style.display=='none')return;
+let q=(document.getElementById('dSearch')?.value||'').toLowerCase();
+let docs=db.documents.filter(x=>(x.rider+' '+x.name+' '+x.expiry+' '+x.note).toLowerCase().includes(q)).slice().sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999'));
+if(!docs.length){box.innerHTML='<div class="empty">No documents found.</div>';return}
+box.innerHTML=docs.map(x=>{
+let st=docStatus(x.expiry), rname=esc(db.riders.find(r=>r.id==x.rider)?.name||x.rider);
+return `<div class="doc-card">
+<div class="doc-thumb" id="thumb-${esc(x.id)}" onclick="viewDoc('${esc(x.id)}')">${extIcon(x.file)}<span class="badge ${st[1]}">${st[0]}</span></div>
+<div class="doc-card-body"><b>${esc(x.name)}</b><span class="muted">${rname}</span><span class="muted">${esc(x.file||'Not attached')}</span><span class="muted">Expiry: ${esc(x.expiry||'-')}</span></div>
+<div class="doc-card-actions"><button class="primary" onclick="viewDoc('${esc(x.id)}')">View</button><button onclick='addDocForm(${JSON.stringify(x)})'>Update</button><button onclick="downloadDoc('${esc(x.id)}')">Download</button><button class="danger" onclick="deleteDoc('${esc(x.id)}')">Delete</button></div>
+</div>`;
+}).join('');
+docs.forEach(async x=>{
+if(!x.blobId)return;
+let el=document.getElementById('thumb-'+x.id); if(!el)return;
+try{
+let f=docThumbCache[x.blobId]||await idbGet(x.blobId);
+if(f){docThumbCache[x.blobId]=f;if(f.type&&f.type.startsWith('image/')){let url=URL.createObjectURL(f);el.style.backgroundImage=`url(${url})`;el.textContent=''}}
+}catch(e){}
+});
+}
+
+/* ===== V5.2: Documents By Rider (Folder View) ===== */
+function renderDocFolders(){
+let box=document.getElementById('docFolders'); if(!box||box.style.display=='none')return;
+if(docOpenFolderRider){renderDocFolderDetail(docOpenFolderRider);return}
+let q=(document.getElementById('dSearch')?.value||'').toLowerCase();
+let riderIds=new Set(db.documents.map(d=>d.rider));
+db.riders.forEach(r=>riderIds.add(r.id));
+let list=[...riderIds].map(rid=>{
+let r=db.riders.find(x=>x.id==rid);
+let docs=db.documents.filter(d=>d.rider==rid);
+return {rid,rname:r?r.name:rid,docs};
+}).filter(f=>(f.rid+' '+f.rname).toLowerCase().includes(q)||f.docs.some(d=>(d.name+' '+d.expiry+' '+d.note).toLowerCase().includes(q)));
+list.sort((a,b)=>a.rname.localeCompare(b.rname));
+if(!list.length){box.innerHTML='<div class="empty">No riders or documents found.</div>';return}
+box.innerHTML='<div class="folder-grid">'+list.map(f=>{
+let bad=f.docs.filter(d=>docStatus(d.expiry)[1]=='bad').length;
+return `<div class="folder-card" onclick="openDocFolder('${esc(f.rid)}')">
+<div class="folder-icon">📁</div>
+<div class="folder-name">${esc(f.rname)}</div>
+<div class="folder-meta">${esc(f.rid)}</div>
+<div class="folder-meta">${f.docs.length} document${f.docs.length==1?'':'s'}</div>
+<div class="folder-badges">${bad?`<span class="badge bad">${bad} ACTION NEEDED</span>`:(f.docs.length?'<span class="badge good">OK</span>':'')}</div>
+</div>`;
+}).join('')+'</div>';
+}
+function openDocFolder(rid){docOpenFolderRider=rid;renderDocFolders()}
+function closeDocFolder(){docOpenFolderRider=null;renderDocFolders()}
+function renderDocFolderDetail(rid){
+let box=document.getElementById('docFolders');
+let r=db.riders.find(x=>x.id==rid);
+let docs=db.documents.filter(d=>d.rider==rid).slice().sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999'));
+box.innerHTML=`<button class="dark folder-back" onclick="closeDocFolder()">← Back to Riders</button>
+<div class="card"><h3>📁 ${esc(r?r.name:rid)} <span class="muted">(${esc(rid)})</span></h3>
+<div class="muted">${esc(r?.mobile||'')}${r?' · Status: '+esc(r.status):''} · ${docs.length} document${docs.length==1?'':'s'}</div></div>
+<div id="docFolderList"></div>`;
+let listEl=document.getElementById('docFolderList');
+if(!docs.length){listEl.innerHTML='<div class="empty">No documents uploaded for this rider yet.</div>';return}
+listEl.innerHTML=docs.map(x=>{
+let st=docStatus(x.expiry);
+return `<div class="doc-detail-card">
+<div class="doc-detail-thumb" id="fthumb-${esc(x.id)}" onclick="viewDoc('${esc(x.id)}')">${extIcon(x.file)}</div>
+<div class="doc-detail-body">
+<b>${esc(x.name)}</b> <span class="badge ${st[1]}">${st[0]}</span>
+<div class="doc-detail-row">
+<div><span>File:</span> ${esc(x.file||'Not attached')}</div>
+<div><span>Issue Date:</span> ${esc(x.issue||'-')}</div>
+<div><span>Expiry Date:</span> ${esc(x.expiry||'-')}</div>
+<div><span>Note / Number:</span> ${esc(x.note||'-')}</div>
+<div><span>Added:</span> ${esc(x.added||'-')}</div>
+<div><span>Size:</span> ${x.size?(x.size/1024).toFixed(1)+' KB':'-'}</div>
+</div>
+<div class="doc-detail-actions">
+<button class="primary" onclick="viewDoc('${esc(x.id)}')">View</button>
+<button onclick='addDocForm(${JSON.stringify(x)})'>Update</button>
+<button onclick="downloadDoc('${esc(x.id)}')">Download</button>
+<button class="danger" onclick="deleteDoc('${esc(x.id)}')">Delete</button>
+</div></div></div>`;
+}).join('');
+docs.forEach(async x=>{
+if(!x.blobId)return;
+let el=document.getElementById('fthumb-'+x.id); if(!el)return;
+try{
+let f=docThumbCache[x.blobId]||await idbGet(x.blobId);
+if(f){docThumbCache[x.blobId]=f;if(f.type&&f.type.startsWith('image/')){let url=URL.createObjectURL(f);el.style.backgroundImage=`url(${url})`;el.textContent=''}}
+}catch(e){}
+});
+}
+function renderDocAlerts(){
+let now=new Date(), expired=0, soon=0;
+db.documents.forEach(x=>{if(!x.expiry)return;let days=Math.ceil((new Date(x.expiry+'T23:59:59')-now)/86400000);if(days<0)expired++;else if(days<=30)soon++});
+document.getElementById('docAlerts').innerHTML=[
+['Expired Documents',expired,'bad'],['Expiring ≤ 30 Days',soon,'warn'],['Total Documents',db.documents.length,'good'],['Riders With Docs',new Set(db.documents.map(x=>x.rider)).size,'good']
+].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="metric">${x[1]}</div><span class="badge ${x[2]}">${x[0]}</span></div>`).join('');
+let rows=db.riders.map(r=>{
+let docs=db.documents.filter(d=>d.rider==r.id), bad=docs.filter(d=>docStatus(d.expiry)[1]=='bad').length, total=docs.length;
+return `<tr><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td>${total}</td><td>${bad?'<span class="badge bad">'+bad+' ACTION NEEDED</span>':'<span class="badge good">OK</span>'}</td></tr>`
+}).join('');
+document.getElementById('dashboardRiderSummary').innerHTML=`<div class="tablewrap"><table><thead><tr><th>Rider ID</th><th>Name</th><th>Documents</th><th>Document Status</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="empty">No riders yet.</td></tr>'}</tbody></table></div>`;
+}
+function exportJSON(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});download(blob,'yara-lamis-backup.json')}
+function download(blob,name){let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
+function importJSON(){document.getElementById('fileImport').click()}
+function readJSON(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();renderAll();alert('Backup imported successfully.')}catch{alert('Invalid backup file')}};r.readAsText(f)}
+function csv(rows){if(!rows.length)return '';let keys=Object.keys(rows[0]);return [keys.join(','),...rows.map(r=>keys.map(k=>`"${String(r[k]??'').replaceAll('"','""')}"`).join(','))].join('\\n')}
+function exportCSV(type){let rows=db[type];download(new Blob([csv(rows)],{type:'text/csv'}),`yara-lamis-${type}.csv`)}
+function resetData(){if(confirm('This will permanently remove local portal data. Continue?')){localStorage.removeItem(KEY);location.reload()}}
+function saveSettings(){db.settings.company=document.getElementById('company').value;save();alert('Settings saved')}
+
+/* ===== V5: Global Search ===== */
+function globalSearch(){
+let q=(document.getElementById('globalSearch')?.value||'').trim().toLowerCase(), box=document.getElementById('globalResults');
+if(!q){box.innerHTML='';return}
+let riders=db.riders.filter(r=>(r.id+' '+r.name+' '+(r.mobile||'')).toLowerCase().includes(q));
+let vehicles=db.vehicles.filter(v=>(v.plate+' '+(v.model||'')+' '+(v.rider||'')).toLowerCase().includes(q));
+box.innerHTML=[
+...riders.map(r=>`<div class="card" style="margin-top:8px;cursor:pointer" onclick="openRider360('${esc(r.id)}')"><b>${esc(r.name)}</b> — ${esc(r.id)}<br><span class="muted">${esc(r.mobile||'')} · Tap to open Rider 360° →</span></div>`),
+...vehicles.map(v=>`<div class="card" style="margin-top:8px"><b>🚗 ${esc(v.plate)}</b> — ${esc(v.model||'')}<br><span class="muted">Rider: ${esc(db.riders.find(r=>r.id==v.rider)?.name||v.rider||'Unassigned')}</span></div>`)
+].join('')||'<div class="empty">No matching records.</div>';
+}
+
+/* ===== V5: Rider 360 ===== */
+function openRider360(id){
+document.querySelectorAll('.page').forEach(x=>x.classList.remove('show'));
+document.getElementById('rider360').classList.add('show');
+document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+renderRider360(id);
+}
+function renderRider360(id){
+let r=db.riders.find(x=>x.id==id); if(!r){document.getElementById('rider360Body').innerHTML='<div class="empty">Rider not found.</div>';return}
+let docs=db.documents.filter(x=>x.rider==id), pens=db.penalties.filter(x=>x.rider==id), vs=db.vehicles.filter(x=>x.rider==id);
+let perf=db.performance.filter(x=>x.rider==id);
+let orders=perf.reduce((a,x)=>a+Number(x.orders||0),0), comp=perf.reduce((a,x)=>a+Number(x.completed||0),0);
+document.getElementById('rider360Body').innerHTML=`
+<div class="card"><div class="grid">
+<div><div class="muted">Rider</div><div class="metric">${esc(r.name)}</div></div>
+<div><div class="muted">Rider ID</div><div class="metric">${esc(r.id)}</div></div>
+<div><div class="muted">Mobile</div><div class="metric">${esc(r.mobile||'-')}</div></div>
+<div><div class="muted">Status</div><div class="metric">${esc(r.status)}</div></div></div></div>
+<div class="grid" style="margin-top:15px">
+<div class="card"><div class="muted">Total Orders</div><div class="metric">${orders}</div></div>
+<div class="card"><div class="muted">Completed</div><div class="metric">${comp}</div></div>
+<div class="card"><div class="muted">Penalty Total</div><div class="metric">${pens.reduce((a,x)=>a+Number(x.amount||0),0)} SAR</div></div>
+<div class="card"><div class="muted">Documents</div><div class="metric">${docs.length}</div></div></div>
+<div class="card" style="margin-top:15px"><h3>📁 Documents</h3><div class="tablewrap"><table><thead><tr><th>Document</th><th>Expiry</th><th>Status</th><th>Action</th></tr></thead><tbody>
+${docs.map(x=>{let s=docStatus(x.expiry);return `<tr><td>${esc(x.name)}</td><td>${esc(x.expiry||'-')}</td><td><span class="badge ${s[1]}">${s[0]}</span></td><td>${x.file&&x.file!=='Not attached'?`<button class="primary" onclick="viewDoc('${esc(x.id)}')">View</button>`:'-'}</td></tr>`}).join('')||'<tr><td colspan="4" class="empty">No documents.</td></tr>'}
+</tbody></table></div></div>
+<div class="card" style="margin-top:15px"><h3>⚠️ Penalty History & Proof</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Reason</th><th>Amount</th><th>Proof</th></tr></thead><tbody>
+${pens.slice().reverse().map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.reason)}</td><td><b>${x.amount} SAR</b></td><td>${x.file?`<button class="primary" onclick="viewPenalty('${esc(x.id)}')">View Proof</button>`:'No Proof'}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No penalties.</td></tr>'}
+</tbody></table></div></div>
+<div class="card" style="margin-top:15px"><h3>🚗 Assigned Vehicle</h3><div class="tablewrap"><table><thead><tr><th>Plate</th><th>Model</th><th>Registration</th><th>Insurance</th></tr></thead><tbody>
+${vs.map(v=>`<tr><td>${esc(v.plate)}</td><td>${esc(v.model||'-')}</td><td>${esc(v.regExpiry||'-')}</td><td>${esc(v.insExpiry||'-')}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No vehicle assigned.</td></tr>'}
+</tbody></table></div></div>`;
+}
+
+/* ===== V5: Vehicle Management ===== */
+function vehicleForm(v){
+v=v||{}; let opts=db.riders.map(r=>`<option value="${esc(r.id)}" ${r.id==v.rider?'selected':''}>${esc(r.name)} (${esc(r.id)})</option>`).join('');
+document.getElementById('vehicleFormBox').innerHTML=`<div class="card form">
+<input id="vp" placeholder="Plate Number" value="${esc(v.plate||'')}">
+<input id="vm" placeholder="Vehicle Model" value="${esc(v.model||'')}">
+<select id="vr"><option value="">Select Rider</option>${opts}</select>
+<input id="vreg" type="date" value="${esc(v.regExpiry||'')}" placeholder="Registration Expiry">
+<input id="vins" type="date" value="${esc(v.insExpiry||'')}" placeholder="Insurance Expiry">
+<select id="vstatus"><option ${v.status!='Inactive'?'selected':''}>Active</option><option ${v.status=='Inactive'?'selected':''}>Inactive</option></select>
+<button class="primary" onclick="saveVehicle('${esc(v.id||'')}')">${v.id?'Update Vehicle':'Save Vehicle'}</button>
+<button onclick="document.getElementById('vehicleFormBox').innerHTML=''">Close</button></div>`;
+}
+function saveVehicle(oldId){
+let v={id:oldId||('VEH-'+Date.now()),plate:vp.value.trim(),model:vm.value.trim(),rider:vr.value,regExpiry:vreg.value,insExpiry:vins.value,status:vstatus.value};
+if(!v.plate)return alert('Plate number is required');
+if(oldId){let i=db.vehicles.findIndex(x=>x.id==oldId);if(i>=0)db.vehicles[i]=v}else db.vehicles.push(v);
+save();document.getElementById('vehicleFormBox').innerHTML='';renderAll();
+}
+function deleteVehicle(id){if(confirm('Delete this vehicle?')){db.vehicles=db.vehicles.filter(x=>x.id!=id);save();renderAll()}}
+function renderVehicles(){
+let q=(document.getElementById('vSearch')?.value||'').toLowerCase();
+document.getElementById('vehicleBody').innerHTML=db.vehicles.filter(v=>(v.plate+' '+(v.rider||'')+' '+(v.model||'')).toLowerCase().includes(q)).map(v=>`<tr><td>${esc(v.plate)}</td><td>${esc(v.model||'-')}</td><td>${esc(db.riders.find(r=>r.id==v.rider)?.name||v.rider||'-')}</td><td>${esc(v.regExpiry||'-')}</td><td>${esc(v.insExpiry||'-')}</td><td><span class="badge ${v.status=='Active'?'good':'bad'}">${esc(v.status)}</span></td><td><button onclick='vehicleForm(${JSON.stringify(v)})'>Update</button> <button class="danger" onclick="deleteVehicle('${esc(v.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No vehicles yet.</td></tr>';
+}
+
+/* ===== V5: Smart Action Center ===== */
+function renderSmartAlerts(){
+let alerts=[], now=new Date();
+db.documents.forEach(d=>{if(!d.expiry)return;let days=Math.ceil((new Date(d.expiry+'T23:59:59')-now)/86400000);let rname=db.riders.find(r=>r.id==d.rider)?.name||d.rider;if(days<0)alerts.push(`🔴 ${esc(d.name)} EXPIRED — ${esc(rname)}`);else if(days<=30)alerts.push(`🟠 ${esc(d.name)} expires in ${days} day(s) — ${esc(rname)}`)});
+db.vehicles.forEach(v=>{[['regExpiry','Registration'],['insExpiry','Insurance']].forEach(([f,label])=>{if(!v[f])return;let days=Math.ceil((new Date(v[f]+'T23:59:59')-now)/86400000);if(days<0)alerts.push(`🔴 ${label} EXPIRED — Vehicle ${esc(v.plate)}`);else if(days<=30)alerts.push(`🟠 ${label} expires in ${days} day(s) — Vehicle ${esc(v.plate)}`)})});
+db.penalties.filter(p=>p.status=='Pending').slice(-8).forEach(p=>alerts.push(`⚠️ Pending penalty — ${esc(db.riders.find(r=>r.id==p.rider)?.name||p.rider)} · ${p.amount} SAR · ${esc(p.reason)}`));
+let el=document.getElementById('smartAlerts');
+if(el)el.innerHTML=alerts.length?alerts.slice(0,12).map(a=>`<div class="notice">${a}</div>`).join(''):'<div class="notice">🟢 No urgent action required.</div>';
+}
+
+/* ===== V5.3: Excel Reports & Bulk Update ===== */
+function toDateStr(v){
+if(v instanceof Date && !isNaN(v)){let y=v.getFullYear(),m=String(v.getMonth()+1).padStart(2,'0'),d=String(v.getDate()).padStart(2,'0');return `${y}-${m}-${d}`}
+let s=String(v??'').trim(); if(!s)return '';
+let d2=new Date(s);
+if(!isNaN(d2))return toDateStr(d2);
+return s;
+}
+function getField(row,names){
+let keys=Object.keys(row);
+for(let n of names){
+let k=keys.find(k=>k.toLowerCase().trim()==n);
+if(k!==undefined && row[k]!==undefined && row[k]!=='')return row[k];
+}
+return undefined;
+}
+function exportDailyReportExcel(){
+if(typeof XLSX==='undefined')return alert('Excel library failed to load. Please check your internet connection and try again.');
+let today=new Date().toISOString().slice(0,10);
+let rows=db.riders.map(r=>{
+let perf=db.performance.filter(p=>p.rider==r.id);
+let todayPerf=perf.filter(p=>p.date==today);
+let tOrders=todayPerf.reduce((a,x)=>a+Number(x.orders||0),0), tCompleted=todayPerf.reduce((a,x)=>a+Number(x.completed||0),0);
+let totalOrders=perf.reduce((a,x)=>a+Number(x.orders||0),0), totalCompleted=perf.reduce((a,x)=>a+Number(x.completed||0),0);
+let pens=db.penalties.filter(p=>p.rider==r.id);
+let totalPenalty=pens.reduce((a,x)=>a+Number(x.amount||0),0), pendingPenalty=pens.filter(x=>x.status=='Pending').reduce((a,x)=>a+Number(x.amount||0),0);
+let docs=db.documents.filter(d=>d.rider==r.id), expiredDocs=docs.filter(d=>docStatus(d.expiry)[1]=='bad').length;
+let veh=db.vehicles.find(v=>v.rider==r.id);
+return {'Rider ID':r.id,'Rider Name':r.name,'Mobile':r.mobile||'','Status':r.status,
+'Today Orders':tOrders,'Today Completed':tCompleted,
+'Total Orders':totalOrders,'Total Completed':totalCompleted,
+'Completion %':totalOrders?(totalCompleted/totalOrders*100).toFixed(1):'0',
+'Total Penalty (SAR)':totalPenalty,'Pending Penalty (SAR)':pendingPenalty,
+'Total Documents':docs.length,'Expired/Expiring Docs':expiredDocs,
+'Vehicle Plate':veh?veh.plate:'-'};
+});
+let ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb,ws,'Daily Report '+today);
+XLSX.writeFile(wb,`yara-lamis-daily-report-${today}.xlsx`);
+}
+function exportEditableTemplate(){
+if(typeof XLSX==='undefined')return alert('Excel library failed to load. Please check your internet connection and try again.');
+let wb=XLSX.utils.book_new();
+let ridersWs=XLSX.utils.json_to_sheet(db.riders.map(r=>({ID:r.id,Name:r.name,Mobile:r.mobile||'',Status:r.status})));
+let perfWs=XLSX.utils.json_to_sheet(db.performance.map(p=>({Date:p.date,'Rider ID':p.rider,Orders:p.orders,Completed:p.completed,Cancel:p.cancel,Reject:p.reject,'Online Hours':p.online})));
+let penWs=XLSX.utils.json_to_sheet(db.penalties.map(p=>({ID:p.id,Date:p.date,'Rider ID':p.rider,Amount:p.amount,Reason:p.reason,Status:p.status,Reference:p.reference||'','Review Date':p.reviewDate||''})));
+XLSX.utils.book_append_sheet(wb,ridersWs,'Riders');
+XLSX.utils.book_append_sheet(wb,perfWs,'Performance');
+XLSX.utils.book_append_sheet(wb,penWs,'Penalties');
+XLSX.writeFile(wb,'yara-lamis-editable-template.xlsx');
+}
+function upsertRiderRow(id,name,mobile,status){
+if(!id||!name)return false;
+let obj={id:String(id).trim(),name:String(name).trim(),mobile:String(mobile||'').trim(),status:String(status||'Active').trim()||'Active'};
+let i=db.riders.findIndex(x=>x.id==obj.id);
+if(i>=0)db.riders[i]=obj;else db.riders.push(obj);
+return true;
+}
+function upsertPerfRow(dateVal,riderId,orders,completed,cancel,reject,online){
+if(!riderId||!dateVal)return false;
+let date=toDateStr(dateVal);
+let obj={date,rider:String(riderId).trim(),orders:+orders||0,completed:+completed||0,cancel:+cancel||0,reject:+reject||0,online:+online||0};
+let i=db.performance.findIndex(x=>x.date==obj.date&&x.rider==obj.rider);
+if(i>=0)db.performance[i]=obj;else db.performance.push(obj);
+return true;
+}
+function upsertPenaltyRow(idVal,dateVal,riderId,amount,reason,status,reference,reviewDate){
+if(!riderId||!reason)return false;
+let existing=idVal?db.penalties.find(x=>x.id==String(idVal).trim()):null;
+let obj={id:existing?existing.id:(idVal?String(idVal).trim():('PEN-'+Date.now()+Math.floor(Math.random()*1000))),
+date:toDateStr(dateVal||new Date()),rider:String(riderId).trim(),amount:+amount||0,
+reason:String(reason).trim(),status:String(status||'Pending').trim(),
+reference:String(reference||'').trim(),reviewDate:toDateStr(reviewDate||''),
+file:existing?.file||'',blobId:existing?.blobId||('PENBLOB-'+Date.now()+Math.floor(Math.random()*1000)),added:existing?.added||new Date().toLocaleString()};
+let i=db.penalties.findIndex(x=>x.id==obj.id);
+if(i>=0)db.penalties[i]=obj;else db.penalties.push(obj);
+return true;
+}
+
+/* ===== V5.5: Daily Rider Entry & Ledger (search by Rider ID or Mobile) ===== */
+let deActiveRider=null;
+function deLookupRider(){
+let q=(document.getElementById('deSearch').value||'').trim();
+let box=document.getElementById('deRiderInfo');
+if(!q){box.innerHTML='';document.getElementById('deFormCard').style.display='none';deActiveRider=null;return}
+let qn=q.replace(/\s+/g,'').toLowerCase();
+let exact=db.riders.filter(r=>r.id.toLowerCase()==q.toLowerCase()||(r.mobile||'').replace(/\s+/g,'')==q.replace(/\s+/g,''));
+let matches=exact.length?exact:db.riders.filter(r=>(r.id+' '+r.name+' '+(r.mobile||'')).toLowerCase().includes(q.toLowerCase()));
+if(matches.length==1){
+selectDeRider(matches[0].id);
+}else if(matches.length>1){
+deActiveRider=null;document.getElementById('deFormCard').style.display='none';
+box.innerHTML='<div class="notice">Multiple matches — pick one: '+matches.map(m=>`<button onclick="selectDeRider('${esc(m.id)}')">${esc(m.name)} (${esc(m.id)})</button>`).join(' ')+'</div>';
+}else{
+deActiveRider=null;document.getElementById('deFormCard').style.display='none';
+box.innerHTML='<div class="notice">⚠️ No rider found matching this ID/Mobile. Add the rider first from Rider Management.</div>';
+}
+}
+function selectDeRider(id){
+let r=db.riders.find(x=>x.id==id); if(!r)return;
+deActiveRider=id;
+document.getElementById('deSearch').value=id;
+document.getElementById('deRiderInfo').innerHTML=`<span class="badge good">✔ Matched — ${esc(r.name)} (${esc(r.id)}) · ${esc(r.mobile||'No mobile on file')}</span>`;
+document.getElementById('deFormCard').style.display='';
+renderDeForm(r);
+}
+function renderDeForm(r){
+let perf=db.performance.filter(x=>x.rider==r.id), pens=db.penalties.filter(x=>x.rider==r.id);
+let totalOrders=perf.reduce((a,x)=>a+Number(x.orders||0),0), totalPenalty=pens.reduce((a,x)=>a+Number(x.amount||0),0);
+document.getElementById('deFormCard').innerHTML=`<h3>Quick Daily Update — ${esc(r.name)}</h3>
+<div class="muted">Lifetime so far: ${totalOrders} orders · ${totalPenalty} SAR penalty · ${perf.length} day(s) recorded</div>
+<div class="form" style="margin-top:10px">
+<input id="deDate" type="date" value="${new Date().toISOString().slice(0,10)}">
+<input id="deOrders" type="number" placeholder="Orders" value="0">
+<input id="deCompleted" type="number" placeholder="Completed" value="0">
+<input id="deCancel" type="number" placeholder="Cancel" value="0">
+<input id="deReject" type="number" placeholder="Reject" value="0">
+<input id="deOnline" type="number" step=".1" placeholder="Online Hours" value="0">
+<input id="dePenAmt" type="number" placeholder="Penalty Amount (optional)">
+<input id="dePenReason" placeholder="Penalty Reason (optional)">
+</div>
+<button class="primary" style="margin-top:10px" onclick="submitDailyEntry()">💾 Save — Auto-link to ${esc(r.id)}</button>
+<div id="deStatus"></div>`;
+}
+function submitDailyEntry(){
+if(!deActiveRider)return alert('Please search and select a rider first.');
+let date=document.getElementById('deDate').value; if(!date)return alert('Date is required');
+upsertPerfRow(date,deActiveRider,document.getElementById('deOrders').value,document.getElementById('deCompleted').value,document.getElementById('deCancel').value,document.getElementById('deReject').value,document.getElementById('deOnline').value);
+let penAmt=+document.getElementById('dePenAmt').value||0, penReason=document.getElementById('dePenReason').value.trim();
+if(penAmt>0&&penReason)upsertPenaltyRow('',date,deActiveRider,penAmt,penReason,'Pending','','');
+save();renderAll();
+let r=db.riders.find(x=>x.id==deActiveRider);
+document.getElementById('deStatus').innerHTML=`<div class="notice">✅ Saved for ${esc(date)} — linked to Rider ID ${esc(deActiveRider)}. Totals, Dashboard and Ledger updated automatically.</div>`;
+['deOrders','deCompleted','deCancel','deReject','deOnline','dePenAmt','dePenReason'].forEach(id=>document.getElementById(id).value='');
+renderDeForm(r);
+}
+function renderDailyLedger(){
+let body=document.getElementById('dlBody'); if(!body)return;
+let dateFilter=document.getElementById('dlDate')?.value||'';
+let q=(document.getElementById('dlSearch')?.value||'').toLowerCase();
+let rows=db.performance.filter(x=>(!dateFilter||x.date==dateFilter)&&((x.rider+' '+(db.riders.find(r=>r.id==x.rider)?.name||'')).toLowerCase().includes(q)));
+rows=rows.slice().sort((a,b)=>b.date.localeCompare(a.date));
+body.innerHTML=rows.map(x=>{
+let penTotal=db.penalties.filter(p=>p.rider==x.rider&&p.date==x.date).reduce((a,p)=>a+Number(p.amount||0),0);
+return `<tr><td>${esc(x.date)}</td><td>${esc(db.riders.find(r=>r.id==x.rider)?.name||x.rider)}<br><span class="muted">${esc(x.rider)}</span></td><td>${x.orders}</td><td>${x.completed}</td><td>${x.cancel}</td><td>${x.reject}</td><td>${penTotal?penTotal+' SAR':'-'}</td></tr>`;
+}).join('')||'<tr><td colspan="7" class="empty">No entries found for this filter.</td></tr>';
+}
+
+async function handleExcelImport(e){
+let f=e.target.files[0]; if(!f)return;
+let statusEl=document.getElementById('excelImportStatus');
+if(typeof XLSX==='undefined'){alert('Excel library failed to load. Please check your internet connection and try again.');e.target.value='';return}
+try{
+let buf=await f.arrayBuffer();
+let wb=XLSX.read(buf,{type:'array',cellDates:true});
+let counts={riders:0,performance:0,penalties:0};
+let sheetName=n=>wb.SheetNames.find(s=>s.toLowerCase().trim()==n);
+let ridersSheet=sheetName('riders'), perfSheet=sheetName('performance'), penSheet=sheetName('penalties');
+
+if(ridersSheet){
+XLSX.utils.sheet_to_json(wb.Sheets[ridersSheet]).forEach(row=>{
+if(upsertRiderRow(getField(row,['id','rider id','riderid']),getField(row,['name','rider name']),getField(row,['mobile','phone']),getField(row,['status'])))counts.riders++;
+});
+}
+if(perfSheet){
+XLSX.utils.sheet_to_json(wb.Sheets[perfSheet]).forEach(row=>{
+if(upsertPerfRow(getField(row,['date']),getField(row,['rider id','riderid','rider']),getField(row,['orders']),getField(row,['completed']),getField(row,['cancel']),getField(row,['reject']),getField(row,['online hours','online'])))counts.performance++;
+});
+}
+if(penSheet){
+XLSX.utils.sheet_to_json(wb.Sheets[penSheet]).forEach(row=>{
+if(upsertPenaltyRow(getField(row,['id','penalty id']),getField(row,['date']),getField(row,['rider id','riderid','rider']),getField(row,['amount']),getField(row,['reason']),getField(row,['status']),getField(row,['reference','ref']),getField(row,['review date','reviewdate'])))counts.penalties++;
+});
+}
+if(!counts.riders&&!counts.performance&&!counts.penalties){
+statusEl.innerHTML='<div class="notice">⚠️ No matching sheets found. Make sure your Excel has sheets named "Riders", "Performance" and/or "Penalties" (use the Editable Template as a guide), or use "Import Any Excel File" below instead.</div>';
+}else{
+save();renderAll();
+statusEl.innerHTML=`<div class="notice">✅ Import complete — Riders: ${counts.riders}, Performance: ${counts.performance}, Penalties: ${counts.penalties}. Dashboard and analytics updated automatically.</div>`;
+}
+}catch(err){
+statusEl.innerHTML='<div class="notice">❌ Could not read this file. Please make sure it is a valid .xlsx file exported from the Editable Template.</div>';
+}
+e.target.value='';
+}
+
+/* ===== V5.4: Import ANY Excel File (Preview + Column Mapping) ===== */
+let importWB=null, importHeaders=[], importRawRows=[];
+const IMPORT_FIELD_SCHEMAS={
+riders:{label:'Riders',fields:[
+ {key:'id',label:'Rider ID',required:true,aliases:['id','rider id','riderid']},
+ {key:'name',label:'Rider Name',required:true,aliases:['name','rider name']},
+ {key:'mobile',label:'Mobile',required:false,aliases:['mobile','phone']},
+ {key:'status',label:'Status',required:false,aliases:['status']}
+]},
+performance:{label:'Performance',fields:[
+ {key:'date',label:'Date',required:true,aliases:['date']},
+ {key:'rider',label:'Rider ID',required:true,aliases:['rider id','riderid','rider']},
+ {key:'orders',label:'Orders',required:false,aliases:['orders']},
+ {key:'completed',label:'Completed',required:false,aliases:['completed']},
+ {key:'cancel',label:'Cancel',required:false,aliases:['cancel']},
+ {key:'reject',label:'Reject',required:false,aliases:['reject']},
+ {key:'online',label:'Online Hours',required:false,aliases:['online hours','online']}
+]},
+penalties:{label:'Penalties',fields:[
+ {key:'rider',label:'Rider ID',required:true,aliases:['rider id','riderid','rider']},
+ {key:'reason',label:'Reason',required:true,aliases:['reason']},
+ {key:'id',label:'Penalty ID',required:false,aliases:['id','penalty id']},
+ {key:'date',label:'Date',required:false,aliases:['date']},
+ {key:'amount',label:'Amount',required:false,aliases:['amount']},
+ {key:'status',label:'Status',required:false,aliases:['status']},
+ {key:'reference',label:'Reference',required:false,aliases:['reference','ref']},
+ {key:'reviewDate',label:'Review Date',required:false,aliases:['review date','reviewdate']}
+]}
+};
+async function handleAnyExcelUpload(e){
+let f=e.target.files[0]; if(!f)return;
+let statusEl=document.getElementById('anyImportStatus');
+if(typeof XLSX==='undefined'){alert('Excel library failed to load. Please check your internet connection and try again.');e.target.value='';return}
+try{
+let buf=await f.arrayBuffer();
+importWB=XLSX.read(buf,{type:'array',cellDates:true});
+let sheetSel=document.getElementById('anySheetSelect');
+sheetSel.innerHTML=importWB.SheetNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+document.getElementById('anySheetPickBox').style.display='';
+loadImportSheet(importWB.SheetNames[0]);
+statusEl.innerHTML='';
+}catch(err){
+statusEl.innerHTML='<div class="notice">❌ Could not read this file. Please make sure it is a valid Excel (.xlsx/.xls) file.</div>';
+}
+}
+function loadImportSheet(name){
+let ws=importWB.Sheets[name];
+let rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+let headerRow=rows[0]||[];
+importHeaders=headerRow.map((h,i)=>String(h||'').trim()||('Column '+(i+1)));
+importRawRows=rows.slice(1).filter(r=>r.some(c=>String(c??'').trim()!==''));
+renderImportPreview();
+document.getElementById('anyTargetBox').style.display='';
+renderFieldMapping(document.getElementById('anyTargetSelect').value);
+}
+function renderImportPreview(){
+let sample=importRawRows.slice(0,8);
+document.getElementById('anyPreviewBox').innerHTML=`<div class="sub" style="margin-top:10px">Preview (first ${sample.length} of ${importRawRows.length} rows)</div>
+<div class="tablewrap"><table><thead><tr>${importHeaders.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+${sample.map(r=>`<tr>${importHeaders.map((h,i)=>`<td>${esc(r[i]??'')}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${importHeaders.length||1}" class="empty">No data rows found.</td></tr>`}
+</tbody></table></div>`;
+}
+function renderFieldMapping(target){
+let schema=IMPORT_FIELD_SCHEMAS[target];
+let opts=importHeaders.map((h,i)=>`<option value="${i}">${esc(h)}</option>`).join('');
+document.getElementById('anyMappingBox').innerHTML=`<div class="sub" style="margin-top:10px">Match each system field to a column from your Excel file</div>
+<div class="form">${schema.fields.map(f=>{
+let guess=importHeaders.findIndex(h=>f.aliases.includes(h.toLowerCase().trim()));
+return `<label>${esc(f.label)}${f.required?' *':''}
+<select id="map_${f.key}"><option value="-1">-- Skip --</option>${opts}</select>
+</label>`.replace(`value="${guess}"`,`value="${guess}" selected`);
+}).join('')}</div>
+<button class="primary" style="margin-top:10px" onclick="runMappedImport('${target}')">✅ Import Mapped Data</button>`;
+}
+function mappedVal(row,key){
+let sel=document.getElementById('map_'+key); if(!sel)return undefined;
+let idx=+sel.value; if(idx<0)return undefined;
+return row[idx];
+}
+function runMappedImport(target){
+let schema=IMPORT_FIELD_SCHEMAS[target];
+let missing=schema.fields.filter(f=>f.required).filter(f=>+document.getElementById('map_'+f.key).value<0);
+if(missing.length)return alert('Please map required field(s): '+missing.map(f=>f.label).join(', '));
+let count=0;
+importRawRows.forEach(row=>{
+if(target=='riders'){
+if(upsertRiderRow(mappedVal(row,'id'),mappedVal(row,'name'),mappedVal(row,'mobile'),mappedVal(row,'status')))count++;
+}else if(target=='performance'){
+if(upsertPerfRow(mappedVal(row,'date'),mappedVal(row,'rider'),mappedVal(row,'orders'),mappedVal(row,'completed'),mappedVal(row,'cancel'),mappedVal(row,'reject'),mappedVal(row,'online')))count++;
+}else if(target=='penalties'){
+if(upsertPenaltyRow(mappedVal(row,'id'),mappedVal(row,'date'),mappedVal(row,'rider'),mappedVal(row,'amount'),mappedVal(row,'reason'),mappedVal(row,'status'),mappedVal(row,'reference'),mappedVal(row,'reviewDate')))count++;
+}
+});
+save();renderAll();
+document.getElementById('anyImportStatus').innerHTML=`<div class="notice">✅ Imported ${count} row(s) into ${schema.label}. Dashboard and analytics updated automatically.</div>`;
+}
+
+
+init();
+</script>
+</body></html>

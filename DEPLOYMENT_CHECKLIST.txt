@@ -1,0 +1,9 @@
+DEPLOYMENT CHECKLIST
+[ ] Test index.html on Android Chrome
+[ ] Add sample riders
+[ ] Add performance records
+[ ] Add penalties
+[ ] Test JSON backup/import
+[ ] For production: connect Supabase/Firebase or another backend
+[ ] Add real authentication before exposing sensitive rider data
+[ ] Configure HTTPS hosting
