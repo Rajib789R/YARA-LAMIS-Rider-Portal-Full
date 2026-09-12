@@ -1,9 +1,465 @@
-DEPLOYMENT CHECKLIST
-[ ] Test index.html on Android Chrome
-[ ] Add sample riders
-[ ] Add performance records
-[ ] Add penalties
-[ ] Test JSON backup/import
-[ ] For production: connect Supabase/Firebase or another backend
-[ ] Add real authentication before exposing sensitive rider data
-[ ] Configure HTTPS hosting
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.chart import BarChart, Reference
+from openpyxl.formatting.rule import CellIsRule
+from openpyxl.utils import get_column_letter
+
+FILE_NAME = "YARA_LAMIS_Rider_Smart_Ledger_35.xlsx"
+
+wb = Workbook()
+
+# =========================================================
+# STYLES
+# =========================================================
+blue = "1F4E78"
+light_blue = "D9EAF7"
+green = "70AD47"
+red = "C00000"
+orange = "F4B183"
+white = "FFFFFF"
+gray = "E7E6E6"
+
+header_fill = PatternFill("solid", fgColor=blue)
+sub_fill = PatternFill("solid", fgColor=light_blue)
+green_fill = PatternFill("solid", fgColor=green)
+red_fill = PatternFill("solid", fgColor=red)
+orange_fill = PatternFill("solid", fgColor=orange)
+
+header_font = Font(color=white, bold=True)
+title_font = Font(size=18, bold=True)
+bold = Font(bold=True)
+
+thin = Side(style="thin", color="B7B7B7")
+border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+# =========================================================
+# 1. DASHBOARD
+# =========================================================
+dash = wb.active
+dash.title = "Dashboard"
+
+dash["A1"] = "YARA LAMIS"
+dash["B1"] = "RIDER SMART LEDGER"
+dash["A1"].font = Font(size=20, bold=True)
+dash["B1"].font = Font(size=20, bold=True)
+
+dashboard_data = [
+    ("Total Riders", "=COUNTA('Rider Master'!A2:A36)"),
+    ("Total Payments", '=SUMIF(Transactions!D2:D501,"Payment",Transactions!E2:E501)'),
+    ("Total Expenses", '=SUMIF(Transactions!D2:D501,"Expense",Transactions!E2:E501)'),
+    ("Total Outstanding", "=SUM('Rider Master'!H2:H36)"),
+    ("Total Advance", '=SUMIF(Transactions!F2:F501,"Advance",Transactions!E2:E501)'),
+    ("Total Penalty", '=SUMIF(Transactions!F2:F501,"Penalty",Transactions!E2:E501)'),
+    ("Total Accident", '=SUMIF(Transactions!F2:F501,"Accident Payment",Transactions!E2:E501)'),
+    ("Total Fuel", '=SUMIF(Transactions!F2:F501,"Fuel Extra",Transactions!E2:E501)'),
+    ("Total Food", '=SUMIF(Transactions!F2:F501,"Monthly Food",Transactions!E2:E501)'),
+    ("Total Mobile", '=SUMIF(Transactions!F2:F501,"Mobile Buy",Transactions!E2:E501)'),
+]
+
+dash["A3"] = "Dashboard Summary"
+dash["A3"].fill = header_fill
+dash["A3"].font = header_font
+
+dash["A4"] = "Metric"
+dash["B4"] = "Amount / Count"
+
+for cell in dash[4]:
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.border = border
+
+for row_num, (label, formula) in enumerate(dashboard_data, start=5):
+    dash.cell(row_num, 1, label)
+    dash.cell(row_num, 2, formula)
+
+    dash.cell(row_num, 1).border = border
+    dash.cell(row_num, 2).border = border
+
+dash.column_dimensions["A"].width = 30
+dash.column_dimensions["B"].width = 25
+
+# =========================================================
+# 2. RIDER MASTER
+# =========================================================
+rm = wb.create_sheet("Rider Master")
+
+headers = [
+    "Rider ID",
+    "Name",
+    "Iqama Number",
+    "Mobile",
+    "Supervisor",
+    "Status",
+    "Net Balance",
+    "Outstanding"
+]
+
+for col, header in enumerate(headers, 1):
+    cell = rm.cell(1, col, header)
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.border = border
+    cell.alignment = Alignment(horizontal="center")
+
+# 35 riders
+for r in range(2, 37):
+
+    # Net Balance = Expenses - Payments
+    rm.cell(
+        r,
+        7,
+        f'=SUMIFS(Transactions!$E:$E,Transactions!$B:$B,A{r},Transactions!$D:$D,"Expense")'
+        f'-SUMIFS(Transactions!$E:$E,Transactions!$B:$B,A{r},Transactions!$D:$D,"Payment")'
+    )
+
+    rm.cell(r, 8, f"=G{r}")
+
+    for c in range(1, 9):
+        rm.cell(r, c).border = border
+
+widths = [16, 25, 22, 18, 22, 15, 18, 18]
+
+for i, width in enumerate(widths, 1):
+    rm.column_dimensions[get_column_letter(i)].width = width
+
+# Status dropdown
+status_dropdown = DataValidation(
+    type="list",
+    formula1='"Active,Inactive,Suspended,Transferred"',
+    allow_blank=True
+)
+
+rm.add_data_validation(status_dropdown)
+status_dropdown.add("F2:F36")
+
+# Outstanding red highlight
+rm.conditional_formatting.add(
+    "H2:H36",
+    CellIsRule(
+        operator="greaterThan",
+        formula=["0"],
+        fill=red_fill
+    )
+)
+
+# =========================================================
+# 3. TRANSACTIONS
+# =========================================================
+tr = wb.create_sheet("Transactions")
+
+transaction_headers = [
+    "Date",
+    "Rider ID",
+    "Name",
+    "Entry Type",
+    "Amount (SAR)",
+    "Category",
+    "Note",
+    "Supervisor"
+]
+
+for col, header in enumerate(transaction_headers, 1):
+    cell = tr.cell(1, col, header)
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.border = border
+    cell.alignment = Alignment(horizontal="center")
+
+# 500 transaction rows
+for r in range(2, 502):
+
+    # Automatic Rider Name
+    tr.cell(
+        r,
+        3,
+        f'=IFERROR(VLOOKUP(B{r},\'Rider Master\'!A:B,2,FALSE),"")'
+    )
+
+    # Automatic Supervisor
+    tr.cell(
+        r,
+        8,
+        f'=IFERROR(VLOOKUP(B{r},\'Rider Master\'!A:E,5,FALSE),"")'
+    )
+
+    for c in range(1, 9):
+        tr.cell(r, c).border = border
+
+# Dropdown: Payment / Expense
+entry_dropdown = DataValidation(
+    type="list",
+    formula1='"Payment,Expense"',
+    allow_blank=True
+)
+
+tr.add_data_validation(entry_dropdown)
+entry_dropdown.add("D2:D501")
+
+# Category dropdown
+category_dropdown = DataValidation(
+    type="list",
+    formula1='"Advance,Mobile Buy,Fuel Extra,Monthly Food,Penalty,Traffic Violation,Accident Payment,Rider Transfer Amount,Maintenance,Other"',
+    allow_blank=True
+)
+
+tr.add_data_validation(category_dropdown)
+category_dropdown.add("F2:F501")
+
+transaction_widths = [
+    14, 16, 25, 16, 18, 25, 40, 22
+]
+
+for i, width in enumerate(transaction_widths, 1):
+    tr.column_dimensions[get_column_letter(i)].width = width
+
+tr.freeze_panes = "A2"
+tr.auto_filter.ref = "A1:H501"
+
+# =========================================================
+# 4. RIDER PROFILE
+# =========================================================
+profile = wb.create_sheet("Rider Profile")
+
+profile["A1"] = "RIDER PROFILE SEARCH"
+profile["A1"].font = title_font
+
+profile["A3"] = "Enter Rider ID:"
+profile["B3"] = ""
+
+profile["A5"] = "Name"
+profile["B5"] = '=IFERROR(VLOOKUP(B3,\'Rider Master\'!A:H,2,FALSE),"")'
+
+profile["A6"] = "Iqama Number"
+profile["B6"] = '=IFERROR(VLOOKUP(B3,\'Rider Master\'!A:H,3,FALSE),"")'
+
+profile["A7"] = "Mobile"
+profile["B7"] = '=IFERROR(VLOOKUP(B3,\'Rider Master\'!A:H,4,FALSE),"")'
+
+profile["A8"] = "Supervisor"
+profile["B8"] = '=IFERROR(VLOOKUP(B3,\'Rider Master\'!A:H,5,FALSE),"")'
+
+profile["A9"] = "Status"
+profile["B9"] = '=IFERROR(VLOOKUP(B3,\'Rider Master\'!A:H,6,FALSE),"")'
+
+profile["A10"] = "Outstanding"
+profile["B10"] = '=IFERROR(VLOOKUP(B3,\'Rider Master\'!A:H,8,FALSE),0)'
+
+for row in range(3, 11):
+    profile.cell(row, 1).border = border
+    profile.cell(row, 2).border = border
+
+profile.column_dimensions["A"].width = 25
+profile.column_dimensions["B"].width = 35
+
+# =========================================================
+# 5. MONTHLY REPORT
+# =========================================================
+monthly = wb.create_sheet("Monthly Report")
+
+monthly_headers = [
+    "Month",
+    "Payments",
+    "Expenses",
+    "Outstanding"
+]
+
+for col, header in enumerate(monthly_headers, 1):
+    cell = monthly.cell(1, col, header)
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.border = border
+
+months = [
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December"
+]
+
+for i, month in enumerate(months, start=2):
+
+    monthly.cell(i, 1, month)
+
+    month_number = i - 1
+
+    monthly.cell(
+        i,
+        2,
+        f'=SUMPRODUCT((MONTH(Transactions!$A$2:$A$501)={month_number})'
+        f'*(Transactions!$D$2:$D$501="Payment")'
+        f'*Transactions!$E$2:$E$501)'
+    )
+
+    monthly.cell(
+        i,
+        3,
+        f'=SUMPRODUCT((MONTH(Transactions!$A$2:$A$501)={month_number})'
+        f'*(Transactions!$D$2:$D$501="Expense")'
+        f'*Transactions!$E$2:$E$501)'
+    )
+
+    monthly.cell(i, 4, f"=C{i}-B{i}")
+
+    for c in range(1, 5):
+        monthly.cell(i, c).border = border
+
+for i in range(1, 5):
+    monthly.column_dimensions[get_column_letter(i)].width = 22
+
+# =========================================================
+# 6. SUPERVISOR REPORT
+# =========================================================
+sup = wb.create_sheet("Supervisor Report")
+
+sup_headers = [
+    "Supervisor",
+    "Payment",
+    "Expense",
+    "Outstanding"
+]
+
+for col, header in enumerate(sup_headers, 1):
+    cell = sup.cell(1, col, header)
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.border = border
+
+for r in range(2, 22):
+
+    sup.cell(
+        r,
+        2,
+        f'=SUMIFS(Transactions!$E:$E,Transactions!$H:$H,A{r},Transactions!$D:$D,"Payment")'
+    )
+
+    sup.cell(
+        r,
+        3,
+        f'=SUMIFS(Transactions!$E:$E,Transactions!$H:$H,A{r},Transactions!$D:$D,"Expense")'
+    )
+
+    sup.cell(r, 4, f"=C{r}-B{r}")
+
+    for c in range(1, 5):
+        sup.cell(r, c).border = border
+
+sup.column_dimensions["A"].width = 25
+sup.column_dimensions["B"].width = 20
+sup.column_dimensions["C"].width = 20
+sup.column_dimensions["D"].width = 20
+
+# =========================================================
+# 7. CATEGORY REPORT
+# =========================================================
+cat = wb.create_sheet("Category Report")
+
+cat_headers = ["Category", "Total Amount"]
+
+for col, header in enumerate(cat_headers, 1):
+    cell = cat.cell(1, col, header)
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.border = border
+
+categories = [
+    "Advance",
+    "Mobile Buy",
+    "Fuel Extra",
+    "Monthly Food",
+    "Penalty",
+    "Traffic Violation",
+    "Accident Payment",
+    "Rider Transfer Amount",
+    "Maintenance",
+    "Other"
+]
+
+for r, category in enumerate(categories, start=2):
+    cat.cell(r, 1, category)
+    cat.cell(
+        r,
+        2,
+        f'=SUMIF(Transactions!$F:$F,A{r},Transactions!$E:$E)'
+    )
+
+    cat.cell(r, 1).border = border
+    cat.cell(r, 2).border = border
+
+cat.column_dimensions["A"].width = 30
+cat.column_dimensions["B"].width = 20
+
+# =========================================================
+# 8. INSTRUCTIONS
+# =========================================================
+guide = wb.create_sheet("How To Use")
+
+guide["A1"] = "YARA LAMIS SMART LEDGER – QUICK GUIDE"
+guide["A1"].font = title_font
+
+instructions = [
+    "1. Rider Master-এ শুধু Rider ID, Name, Iqama Number, Mobile ও Supervisor লিখুন।",
+    "2. Status থেকে Active / Inactive / Suspended / Transferred নির্বাচন করুন।",
+    "3. প্রতিটি নতুন হিসাব Transactions Sheet-এ Entry করুন।",
+    "4. Rider ID দিলে Name ও Supervisor Automatic আসবে।",
+    "5. Entry Type থেকে Payment অথবা Expense নির্বাচন করুন।",
+    "6. Category থেকে Advance, Fuel, Food, Penalty, Accident ইত্যাদি নির্বাচন করুন।",
+    "7. Amount শুধু SAR সংখ্যায় লিখুন।",
+    "8. Dashboard নিজে নিজে Total হিসাব করবে।",
+    "9. Rider Profile-এ Rider ID লিখলে সেই Rider-এর তথ্য ও Outstanding দেখা যাবে।",
+    "10. Monthly Report মাস অনুযায়ী Payment ও Expense দেখাবে।",
+    "11. Supervisor Report Supervisor অনুযায়ী হিসাব দেখাবে।",
+    "12. Category Report প্রতিটি Expense Category-এর মোট হিসাব দেখাবে।",
+    "13. এই Version-এ 35 Rider এবং 500 Transaction Entry-এর জায়গা প্রস্তুত রাখা হয়েছে।"
+]
+
+for i, text in enumerate(instructions, start=3):
+    guide.cell(i, 1, text)
+    guide.cell(i, 1).alignment = Alignment(wrap_text=True)
+
+guide.column_dimensions["A"].width = 110
+
+# =========================================================
+# GENERAL FORMATTING
+# =========================================================
+for sheet in wb.worksheets:
+
+    sheet.sheet_view.showGridLines = False
+
+    for row in sheet.iter_rows():
+        for cell in row:
+            cell.alignment = Alignment(
+                vertical="center",
+                wrap_text=True
+            )
+
+    sheet.freeze_panes = "A2"
+
+# Currency formatting
+for sheet_name in [
+    "Dashboard",
+    "Rider Master",
+    "Transactions",
+    "Rider Profile",
+    "Monthly Report",
+    "Supervisor Report",
+    "Category Report"
+]:
+    sheet = wb[sheet_name]
+
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.column in [2, 5, 7, 8]:
+                cell.number_format = '#,##0.00 "SAR"'
+
+# =========================================================
+# SAVE
+# =========================================================
+wb.save(FILE_NAME)
+
+print("=" * 60)
+print("YARA LAMIS SMART LEDGER CREATED SUCCESSFULLY")
+print("=" * 60)
+print(f"File: {FILE_NAME}")
+print("Riders: 35")
+print("Transaction Rows: 500")
+print("=" * 60)
