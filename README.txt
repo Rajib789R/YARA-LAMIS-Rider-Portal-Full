@@ -37,10 +37,7 @@ V5 NEW FEATURES:
       each time you want the analytics refreshed. Requires an internet
       connection the first time to load the Excel engine (from a CDN).
     - "Import ANY Excel File (Preview + Column Mapping)" — for Excel files that
-      don't follow the template's exact column names. Upload any .xlsx/.xls
-      file, pick the sheet, preview the data, choose which data type to update
-      (Riders / Performance / Penalties), match each system field to your
-      column from a dropdown (auto-guessed where possible), then import.
+      don't follow the template's exact column names. Upload any .xlsx/.xl
       Same automatic dashboard refresh applies.
 - Daily Rider Entry & Ledger (new "Daily Entry" nav item):
     - Search a rider by Rider ID OR Mobile Number in one box — the system
